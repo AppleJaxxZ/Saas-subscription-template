@@ -1,4 +1,5 @@
 import User from '../models/user'
+import Subscription from '../models/subscription'
 const stripe = require('stripe')(process.env.STRIPE_SECERET)
 
 export const prices = async (req, res) => {
@@ -42,6 +43,11 @@ export const subscriptionStatus = async (req, res) => {
             status: 'all',
             expand: ["data.default_payment_method"]
         })
+        const saveSubscription = {
+            user_id: user._id,
+            ...subscriptions.data
+        }
+
 
         const updated = await User.findByIdAndUpdate(user._id, {
             subscriptions: subscriptions.data,
@@ -62,6 +68,19 @@ export const subscriptions = async (req, res) => {
             expand: ["data.default_payment_method"]
         })
         res.json({ subscriptions })
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export const customerPortal = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        const portalSession = await stripe.billingPortal.sessions.create({
+            customer: user.stripe_customer_id,
+            return_url: process.env.STRIPE_SUCCESS_URL,
+        })
+        res.json(portalSession.url)
     } catch (error) {
         console.log(error)
     }
